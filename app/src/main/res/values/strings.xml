@@ -1,7 +1,8 @@
 <resources>
     <string name="app_name">MiTiempoSemanal</string>
-    <string name="app_subtitle">Katherine Aguilar · v0.1.0 (1)</string>
+    <string name="app_subtitle">Katherine Aguilar · v0.2.0 (2)</string>
 
+    <string name="tab_eventos">Eventos</string>
     <string name="tab_tareas">Tareas</string>
     <string name="tab_categorias">Categorías</string>
 
@@ -17,6 +18,15 @@
     <string name="btn_guardar">Guardar</string>
     <string name="btn_cancelar">Cancelar</string>
     <string name="btn_eliminar">Eliminar</string>
+    <string name="btn_iniciar">Iniciar</string>
+    <string name="btn_finalizar">Finalizar</string>
+
+    <string name="hint_buscar_tarea">Buscar o escribir tarea...</string>
+    <string name="label_evento_en_curso">Evento en curso</string>
+    <string name="label_inicio">Inicio:</string>
+    <string name="label_fin">Fin:</string>
+    <string name="label_duracion">Duración:</string>
+    <string name="label_sin_categoria">Seleccione una categoría para esta nueva tarea</string>
 
     <string name="confirm_delete_category">¿Desea eliminar la categoría \"%1$s\"?</string>
     <string name="confirm_delete_task">¿Desea eliminar la tarea \"%1$s\"?</string>
@@ -33,4 +43,7 @@
 
     <string name="empty_categories_title">No hay categorías</string>
     <string name="empty_categories_subtitle">Toca el botón + para agregar una nueva categoría</string>
+
+    <string name="empty_events_title">No hay eventos registrados</string>
+    <string name="empty_events_subtitle">Escribe una tarea arriba y presiona Iniciar para registrar tu tiempo</string>
 </resources>
