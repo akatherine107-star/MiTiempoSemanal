@@ -186,7 +186,11 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         try {
             val db = readableDatabase
             val query = """
-                SELECT t.$COL_TAREA_ID, t.$COL_TAREA_NOMBRE, t.$COL_TAREA_CAT_ID, c.$COL_CAT_NOMBRE
+                SELECT 
+                    t.$COL_TAREA_ID AS tarea_id, 
+                    t.$COL_TAREA_NOMBRE AS tarea_nombre, 
+                    t.$COL_TAREA_CAT_ID AS tarea_cat_id, 
+                    c.$COL_CAT_NOMBRE AS cat_nombre
                 FROM $TABLE_TAREAS t
                 INNER JOIN $TABLE_CATEGORIAS c ON t.$COL_TAREA_CAT_ID = c.$COL_CAT_ID
                 ORDER BY t.$COL_TAREA_ID DESC
@@ -194,10 +198,10 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
             val cursor = db.rawQuery(query, null)
             if (cursor.moveToFirst()) {
                 do {
-                    val id = cursor.getInt(cursor.getColumnIndexOrThrow(COL_TAREA_ID))
-                    val nombre = cursor.getString(cursor.getColumnIndexOrThrow(COL_TAREA_NOMBRE))
-                    val catId = cursor.getInt(cursor.getColumnIndexOrThrow(COL_TAREA_CAT_ID))
-                    val catNombre = cursor.getString(cursor.getColumnIndexOrThrow(COL_CAT_NOMBRE))
+                    val id = cursor.getInt(cursor.getColumnIndexOrThrow("tarea_id"))
+                    val nombre = cursor.getString(cursor.getColumnIndexOrThrow("tarea_nombre"))
+                    val catId = cursor.getInt(cursor.getColumnIndexOrThrow("tarea_cat_id"))
+                    val catNombre = cursor.getString(cursor.getColumnIndexOrThrow("cat_nombre"))
                     lista.add(Tarea(id, nombre, catId, catNombre))
                 } while (cursor.moveToNext())
             }
