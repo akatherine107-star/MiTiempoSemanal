@@ -258,27 +258,33 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun intentarEliminarCategoria(categoria: Categoria) {
-        if (dbHelper.tieneTareasCategoria(categoria.id)) {
-            AlertDialog.Builder(this)
-                .setTitle("No se puede eliminar")
-                .setMessage(getString(R.string.error_cat_has_tasks))
-                .setPositiveButton("Aceptar", null)
-                .show()
-        } else {
-            AlertDialog.Builder(this)
-                .setTitle(R.string.btn_eliminar)
-                .setMessage(getString(R.string.confirm_delete_category, categoria.nombre))
-                .setPositiveButton(R.string.btn_eliminar) { _, _ ->
-                    val exito = dbHelper.eliminarCategoria(categoria.id)
-                    if (exito) {
-                        cargarCategorias()
-                        Toast.makeText(this, "Categoría eliminada", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(this, getString(R.string.error_cat_has_tasks), Toast.LENGTH_LONG).show()
+        try {
+            if (dbHelper.tieneTareasCategoria(categoria.id)) {
+                AlertDialog.Builder(this)
+                    .setTitle("No se puede eliminar")
+                    .setMessage(getString(R.string.error_cat_has_tasks))
+                    .setPositiveButton("Aceptar", null)
+                    .show()
+            } else {
+                val mensaje = getString(R.string.confirm_delete_category, categoria.nombre)
+                AlertDialog.Builder(this)
+                    .setTitle(R.string.btn_eliminar)
+                    .setMessage(mensaje)
+                    .setPositiveButton(R.string.btn_eliminar) { _, _ ->
+                        val exito = dbHelper.eliminarCategoria(categoria.id)
+                        if (exito) {
+                            cargarCategorias()
+                            Toast.makeText(this, "Categoría eliminada", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(this, getString(R.string.error_cat_has_tasks), Toast.LENGTH_LONG).show()
+                        }
                     }
-                }
-                .setNegativeButton(R.string.btn_cancelar, null)
-                .show()
+                    .setNegativeButton(R.string.btn_cancelar, null)
+                    .show()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(this, "Error al eliminar categoría", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -413,20 +419,26 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun mostrarConfirmacionEliminarTarea(tarea: Tarea) {
-        AlertDialog.Builder(this)
-            .setTitle(R.string.btn_eliminar)
-            .setMessage(getString(R.string.confirm_delete_task, tarea.nombre))
-            .setPositiveButton(R.string.btn_eliminar) { _, _ ->
-                val exito = dbHelper.eliminarTarea(tarea.id)
-                if (exito) {
-                    cargarTareas()
-                    cargarCategorias()
-                    Toast.makeText(this, "Tarea eliminada", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(this, "No se pudo eliminar la tarea", Toast.LENGTH_SHORT).show()
+        try {
+            val mensaje = getString(R.string.confirm_delete_task, tarea.nombre)
+            AlertDialog.Builder(this)
+                .setTitle(R.string.btn_eliminar)
+                .setMessage(mensaje)
+                .setPositiveButton(R.string.btn_eliminar) { _, _ ->
+                    val exito = dbHelper.eliminarTarea(tarea.id)
+                    if (exito) {
+                        cargarTareas()
+                        cargarCategorias()
+                        Toast.makeText(this, "Tarea eliminada", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(this, "No se pudo eliminar la tarea", Toast.LENGTH_SHORT).show()
+                    }
                 }
-            }
-            .setNegativeButton(R.string.btn_cancelar, null)
-            .show()
+                .setNegativeButton(R.string.btn_cancelar, null)
+                .show()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(this, "Error al eliminar tarea", Toast.LENGTH_SHORT).show()
+        }
     }
 }

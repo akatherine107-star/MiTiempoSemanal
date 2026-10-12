@@ -18,8 +18,8 @@
     <string name="btn_cancelar">Cancelar</string>
     <string name="btn_eliminar">Eliminar</string>
 
-    <string name="confirm_delete_category">¿Desea eliminar la categoría \"%1${s}\"?</string>
-    <string name="confirm_delete_task">¿Desea eliminar la tarea \"%1${s}\"?</string>
+    <string name="confirm_delete_category">¿Desea eliminar la categoría \"%1$s\"?</string>
+    <string name="confirm_delete_task">¿Desea eliminar la tarea \"%1$s\"?</string>
 
     <string name="error_empty_task_name">El nombre de la tarea no puede estar vacío</string>
     <string name="error_empty_cat_name">El nombre de la categoría no puede estar vacío</string>
