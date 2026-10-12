@@ -205,7 +205,11 @@ class MainActivity : AppCompatActivity() {
 
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 val texto = s?.toString()?.trim() ?: ""
-                tareaSeleccionadaBusqueda = null
+
+                // Mantener tareaSeleccionadaBusqueda si coincide con el texto escrito
+                if (tareaSeleccionadaBusqueda != null && !texto.equals(tareaSeleccionadaBusqueda?.nombre, ignoreCase = true)) {
+                    tareaSeleccionadaBusqueda = null
+                }
 
                 if (texto.length >= 2) {
                     try {
@@ -235,7 +239,7 @@ class MainActivity : AppCompatActivity() {
                     val tarea = sugerenciasActuales.find { "${it.nombre} (${it.categoriaNombre})" == seleccion }
                     if (tarea != null) {
                         tareaSeleccionadaBusqueda = tarea
-                        actvTareaBusqueda.setText(tarea.nombre, false) // false evita volver a filtrar el texto
+                        actvTareaBusqueda.setText(tarea.nombre, false) // false evita re-filtrar el buscador
                         actvTareaBusqueda.setSelection(tarea.nombre.length)
                         chipCategoriaSeleccionada.text = "Categoría: ${tarea.categoriaNombre}"
                         chipCategoriaSeleccionada.visibility = View.VISIBLE
@@ -252,8 +256,8 @@ class MainActivity : AppCompatActivity() {
     private fun setupBotonesEvento() {
         btnIniciar.setOnClickListener {
             try {
-                val nombreTareaInput = actvTareaBusqueda.text.toString().trim()
-                if (nombreTareaInput.isBlank()) {
+                val rawInput = actvTareaBusqueda.text.toString().trim()
+                if (rawInput.isBlank()) {
                     Toast.makeText(this, "Escribe el nombre de una tarea para iniciar", Toast.LENGTH_SHORT).show()
                     return@setOnClickListener
                 }
@@ -264,11 +268,19 @@ class MainActivity : AppCompatActivity() {
                     return@setOnClickListener
                 }
 
-                // Buscar si la tarea existe en BD
-                val tareaExistente = tareaSeleccionadaBusqueda ?: dbHelper.obtenerTareaPorNombre(nombreTareaInput)
+                // Limpiar paréntesis si vino de sugerencias o formato, ej: "Leer Kotlin (Estudio)" -> "Leer Kotlin"
+                val nombreTareaInput = rawInput.substringBefore("(").trim()
+
+                // Buscar primero en la tarea seleccionada por búsqueda, luego en la BD por nombre exacto
+                val tareaExistente = if (tareaSeleccionadaBusqueda != null && 
+                                        tareaSeleccionadaBusqueda!!.nombre.equals(nombreTareaInput, ignoreCase = true)) {
+                    tareaSeleccionadaBusqueda
+                } else {
+                    dbHelper.obtenerTareaPorNombre(nombreTareaInput)
+                }
 
                 if (tareaExistente != null) {
-                    // La tarea existe, iniciar el evento directamente
+                    // La tarea existe en el sistema -> Iniciar evento directamente sin pedir categoría
                     iniciarEventoProcesado(tareaExistente)
                 } else {
                     // HU-04: La tarea NO existe -> Pedir categoría para crearla
@@ -771,7 +783,7 @@ class MainActivity : AppCompatActivity() {
                         cargarTareas()
                         cargarCategorias()
                         cargarEventos()
-                        Toast.makeText(this, "Tarea eliminada", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, "Tarea eliminada con éxito", Toast.LENGTH_SHORT).show()
                     } else {
                         Toast.makeText(this, "No se pudo eliminar la tarea", Toast.LENGTH_SHORT).show()
                     }

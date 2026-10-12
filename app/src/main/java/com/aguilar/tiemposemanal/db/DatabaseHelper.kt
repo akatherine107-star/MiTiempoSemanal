@@ -62,7 +62,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
                 $COL_EVT_FECHA_FIN TEXT,
                 $COL_EVT_DURACION INTEGER DEFAULT 0,
                 $COL_EVT_ESTADO INTEGER DEFAULT 1,
-                FOREIGN KEY($COL_EVT_TAREA_ID) REFERENCES $TABLE_TAREAS($COL_TAREA_ID) ON DELETE RESTRICT
+                FOREIGN KEY($COL_EVT_TAREA_ID) REFERENCES $TABLE_TAREAS($COL_TAREA_ID) ON DELETE CASCADE
             )
         """.trimIndent()
 
@@ -90,7 +90,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
                     $COL_EVT_FECHA_FIN TEXT,
                     $COL_EVT_DURACION INTEGER DEFAULT 0,
                     $COL_EVT_ESTADO INTEGER DEFAULT 1,
-                    FOREIGN KEY($COL_EVT_TAREA_ID) REFERENCES $TABLE_TAREAS($COL_TAREA_ID) ON DELETE RESTRICT
+                    FOREIGN KEY($COL_EVT_TAREA_ID) REFERENCES $TABLE_TAREAS($COL_TAREA_ID) ON DELETE CASCADE
                 )
             """.trimIndent()
             db.execSQL(createTableEventos)
@@ -364,6 +364,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
     fun eliminarTarea(tareaId: Int): Boolean {
         return try {
             val db = writableDatabase
+            // Eliminar primero eventos asociados para no violar la clave foránea
+            db.delete(TABLE_EVENTOS, "$COL_EVT_TAREA_ID = ?", arrayOf(tareaId.toString()))
             val rows = db.delete(TABLE_TAREAS, "$COL_TAREA_ID = ?", arrayOf(tareaId.toString()))
             rows > 0
         } catch (e: Exception) {
@@ -415,7 +417,6 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
     }
 
     fun iniciarEvento(tareaId: Int, fechaInicioISO: String): Long {
-        // Garantizar que solo haya un evento en curso a la vez
         if (obtenerEventoEnCurso() != null) return -1
         return try {
             val db = writableDatabase
