@@ -29,7 +29,6 @@ import com.aguilar.tiemposemanal.adapter.EventoAdapter
 import com.aguilar.tiemposemanal.adapter.TareaAdapter
 import com.aguilar.tiemposemanal.db.DatabaseHelper
 import com.aguilar.tiemposemanal.model.Categoria
-import com.aguilar.tiemposemanal.model.Evento
 import com.aguilar.tiemposemanal.model.Tarea
 import java.time.Duration
 import java.time.LocalDateTime
@@ -196,7 +195,10 @@ class MainActivity : AppCompatActivity() {
     // --- BÚSQUEDA DE TAREAS (HU-03) ---
 
     private fun setupBusquedaTareas() {
-        var tareasSugeridas = listOf<Tarea>()
+        val adapterBusqueda = ArrayAdapter<String>(this, android.R.layout.simple_dropdown_item_1line, mutableListOf())
+        actvTareaBusqueda.setAdapter(adapterBusqueda)
+
+        var sugerenciasActuales = listOf<Tarea>()
 
         actvTareaBusqueda.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -206,15 +208,19 @@ class MainActivity : AppCompatActivity() {
                 tareaSeleccionadaBusqueda = null
 
                 if (texto.length >= 2) {
-                    tareasSugeridas = dbHelper.buscarTareasPorNombre(texto)
-                    val nombresTareas = tareasSugeridas.map { "${it.nombre} (${it.categoriaNombre})" }
+                    try {
+                        sugerenciasActuales = dbHelper.buscarTareasPorNombre(texto)
+                        val nombres = sugerenciasActuales.map { "${it.nombre} (${it.categoriaNombre})" }
 
-                    val adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_dropdown_item_1line, nombresTareas)
-                    actvTareaBusqueda.setAdapter(adapter)
-                    if (nombresTareas.isNotEmpty()) {
-                        actvTareaBusqueda.showDropDown()
+                        adapterBusqueda.clear()
+                        adapterBusqueda.addAll(nombres)
+                        adapterBusqueda.notifyDataSetChanged()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
                     }
                 } else {
+                    adapterBusqueda.clear()
+                    adapterBusqueda.notifyDataSetChanged()
                     chipCategoriaSeleccionada.visibility = View.GONE
                 }
             }
@@ -223,17 +229,20 @@ class MainActivity : AppCompatActivity() {
         })
 
         actvTareaBusqueda.onItemClickListener = AdapterView.OnItemClickListener { parent, _, position, _ ->
-            val seleccion = parent.getItemAtPosition(position) as? String
-            if (seleccion != null) {
-                // Encontrar la tarea que corresponde a la selección
-                val tarea = tareasSugeridas.find { "${it.nombre} (${it.categoriaNombre})" == seleccion }
-                if (tarea != null) {
-                    tareaSeleccionadaBusqueda = tarea
-                    actvTareaBusqueda.setText(tarea.nombre)
-                    actvTareaBusqueda.setSelection(tarea.nombre.length)
-                    chipCategoriaSeleccionada.text = "Categoría: ${tarea.categoriaNombre}"
-                    chipCategoriaSeleccionada.visibility = View.VISIBLE
+            try {
+                val seleccion = parent.getItemAtPosition(position) as? String
+                if (seleccion != null) {
+                    val tarea = sugerenciasActuales.find { "${it.nombre} (${it.categoriaNombre})" == seleccion }
+                    if (tarea != null) {
+                        tareaSeleccionadaBusqueda = tarea
+                        actvTareaBusqueda.setText(tarea.nombre, false) // false evita volver a filtrar el texto
+                        actvTareaBusqueda.setSelection(tarea.nombre.length)
+                        chipCategoriaSeleccionada.text = "Categoría: ${tarea.categoriaNombre}"
+                        chipCategoriaSeleccionada.visibility = View.VISIBLE
+                    }
                 }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
@@ -242,32 +251,42 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupBotonesEvento() {
         btnIniciar.setOnClickListener {
-            val nombreTareaInput = actvTareaBusqueda.text.toString().trim()
-            if (nombreTareaInput.isBlank()) {
-                Toast.makeText(this, "Escribe el nombre de una tarea para iniciar", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
+            try {
+                val nombreTareaInput = actvTareaBusqueda.text.toString().trim()
+                if (nombreTareaInput.isBlank()) {
+                    Toast.makeText(this, "Escribe el nombre de una tarea para iniciar", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
 
-            // Verificar si hay un evento en curso
-            if (dbHelper.obtenerEventoEnCurso() != null) {
-                Toast.makeText(this, "Ya hay un evento en curso. Debes finalizarlo primero.", Toast.LENGTH_LONG).show()
-                return@setOnClickListener
-            }
+                // Verificar si hay un evento en curso
+                if (dbHelper.obtenerEventoEnCurso() != null) {
+                    Toast.makeText(this, "Ya hay un evento en curso. Debes finalizarlo primero.", Toast.LENGTH_LONG).show()
+                    return@setOnClickListener
+                }
 
-            // Buscar si la tarea existe en BD
-            val tareaExistente = tareaSeleccionadaBusqueda ?: dbHelper.obtenerTareaPorNombre(nombreTareaInput)
+                // Buscar si la tarea existe en BD
+                val tareaExistente = tareaSeleccionadaBusqueda ?: dbHelper.obtenerTareaPorNombre(nombreTareaInput)
 
-            if (tareaExistente != null) {
-                // La tarea existe, iniciar el evento directamente
-                iniciarEventoProcesado(tareaExistente)
-            } else {
-                // HU-04: La tarea NO existe -> Pedir categoría para crearla
-                mostrarDialogoSeleccionarCategoriaParaNuevaTarea(nombreTareaInput)
+                if (tareaExistente != null) {
+                    // La tarea existe, iniciar el evento directamente
+                    iniciarEventoProcesado(tareaExistente)
+                } else {
+                    // HU-04: La tarea NO existe -> Pedir categoría para crearla
+                    mostrarDialogoSeleccionarCategoriaParaNuevaTarea(nombreTareaInput)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Toast.makeText(this, "Ocurrió un error al iniciar evento: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
             }
         }
 
         btnFinalizar.setOnClickListener {
-            finalizarEventoEnCurso()
+            try {
+                finalizarEventoEnCurso()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Toast.makeText(this, "Ocurrió un error al finalizar evento: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+            }
         }
     }
 
@@ -324,69 +343,81 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun iniciarEventoProcesado(tarea: Tarea) {
-        val ahora = LocalDateTime.now()
-        val fechaInicioISO = ahora.format(dbDateFormatter)
+        try {
+            val ahora = LocalDateTime.now()
+            val fechaInicioISO = ahora.format(dbDateFormatter)
 
-        val result = dbHelper.iniciarEvento(tarea.id, fechaInicioISO)
-        if (result != -1L) {
-            Toast.makeText(this, "Evento iniciado: ${tarea.nombre}", Toast.LENGTH_SHORT).show()
-            cargarEventos()
-            actualizarEstadoEventoEnCurso()
-        } else {
-            Toast.makeText(this, "Error al iniciar evento", Toast.LENGTH_SHORT).show()
+            val result = dbHelper.iniciarEvento(tarea.id, fechaInicioISO)
+            if (result != -1L) {
+                Toast.makeText(this, "Evento iniciado: ${tarea.nombre}", Toast.LENGTH_SHORT).show()
+                cargarEventos()
+                actualizarEstadoEventoEnCurso()
+            } else {
+                Toast.makeText(this, "Error al iniciar evento", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(this, "Error al procesar inicio de evento: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
         }
     }
 
     private fun finalizarEventoEnCurso() {
-        val eventoEnCurso = dbHelper.obtenerEventoEnCurso()
-        if (eventoEnCurso == null) {
-            actualizarEstadoEventoEnCurso()
-            return
-        }
+        try {
+            val eventoEnCurso = dbHelper.obtenerEventoEnCurso()
+            if (eventoEnCurso == null) {
+                actualizarEstadoEventoEnCurso()
+                return
+            }
 
-        val fin = LocalDateTime.now()
-        val fechaFinISO = fin.format(dbDateFormatter)
+            val fin = LocalDateTime.now()
+            val fechaFinISO = fin.format(dbDateFormatter)
 
-        val duracionSegundos = try {
-            val inicio = LocalDateTime.parse(eventoEnCurso.fechaInicio, dbDateFormatter)
-            Duration.between(inicio, fin).seconds
+            val duracionSegundos = try {
+                val inicio = LocalDateTime.parse(eventoEnCurso.fechaInicio, dbDateFormatter)
+                Duration.between(inicio, fin).seconds
+            } catch (e: Exception) {
+                0L
+            }
+
+            val exito = dbHelper.finalizarEvento(eventoEnCurso.id, fechaFinISO, duracionSegundos)
+            if (exito) {
+                Toast.makeText(this, "Evento finalizado con éxito", Toast.LENGTH_SHORT).show()
+                actvTareaBusqueda.setText("", false)
+                chipCategoriaSeleccionada.visibility = View.GONE
+                tareaSeleccionadaBusqueda = null
+
+                cargarEventos()
+                actualizarEstadoEventoEnCurso()
+            } else {
+                Toast.makeText(this, "Error al finalizar el evento", Toast.LENGTH_SHORT).show()
+            }
         } catch (e: Exception) {
-            0L
-        }
-
-        val exito = dbHelper.finalizarEvento(eventoEnCurso.id, fechaFinISO, duracionSegundos)
-        if (exito) {
-            Toast.makeText(this, "Evento finalizado con éxito", Toast.LENGTH_SHORT).show()
-            actvTareaBusqueda.setText("")
-            chipCategoriaSeleccionada.visibility = View.GONE
-            tareaSeleccionadaBusqueda = null
-
-            cargarEventos()
-            actualizarEstadoEventoEnCurso()
-        } else {
-            Toast.makeText(this, "Error al finalizar el evento", Toast.LENGTH_SHORT).show()
+            e.printStackTrace()
+            Toast.makeText(this, "Error al procesar fin de evento: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
         }
     }
 
     private fun actualizarEstadoEventoEnCurso() {
-        val eventoActivo = dbHelper.obtenerEventoEnCurso()
+        try {
+            val eventoActivo = dbHelper.obtenerEventoEnCurso()
 
-        if (eventoActivo != null) {
-            // Hay un evento en curso
-            btnIniciar.isEnabled = false
-            btnFinalizar.isEnabled = true
+            if (eventoActivo != null) {
+                btnIniciar.isEnabled = false
+                btnFinalizar.isEnabled = true
 
-            panelEventoEnCurso.visibility = View.VISIBLE
-            txtTareaEnCurso.text = "${eventoActivo.tareaNombre} (${eventoActivo.categoriaNombre})"
+                panelEventoEnCurso.visibility = View.VISIBLE
+                txtTareaEnCurso.text = "${eventoActivo.tareaNombre} (${eventoActivo.categoriaNombre})"
 
-            val fechaFormateada = formatearFecha(eventoActivo.fechaInicio)
-            txtHoraInicioEnCurso.text = "Inicio: $fechaFormateada"
-        } else {
-            // No hay evento en curso
-            btnIniciar.isEnabled = true
-            btnFinalizar.isEnabled = false
+                val fechaFormateada = formatearFecha(eventoActivo.fechaInicio)
+                txtHoraInicioEnCurso.text = "Inicio: $fechaFormateada"
+            } else {
+                btnIniciar.isEnabled = true
+                btnFinalizar.isEnabled = false
 
-            panelEventoEnCurso.visibility = View.GONE
+                panelEventoEnCurso.visibility = View.GONE
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
@@ -409,46 +440,57 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun cargarEventos() {
-        val eventos = dbHelper.obtenerTodosEventos()
-        // Formatear fechas para la lista
-        val eventosFormateados = eventos.map { evt ->
-            evt.copy(
-                fechaInicio = formatearFecha(evt.fechaInicio),
-                fechaFin = if (evt.fechaFin != null) formatearFecha(evt.fechaFin) else null
-            )
-        }
+        try {
+            val eventos = dbHelper.obtenerTodosEventos()
+            val eventosFormateados = eventos.map { evt ->
+                evt.copy(
+                    fechaInicio = formatearFecha(evt.fechaInicio),
+                    fechaFin = if (evt.fechaFin != null) formatearFecha(evt.fechaFin) else null
+                )
+            }
 
-        eventoAdapter.actualizarLista(eventosFormateados)
-        if (eventosFormateados.isEmpty()) {
-            emptyEventos.visibility = View.VISIBLE
-            rvEventos.visibility = View.GONE
-        } else {
-            emptyEventos.visibility = View.GONE
-            rvEventos.visibility = View.VISIBLE
+            eventoAdapter.actualizarLista(eventosFormateados)
+            if (eventosFormateados.isEmpty()) {
+                emptyEventos.visibility = View.VISIBLE
+                rvEventos.visibility = View.GONE
+            } else {
+                emptyEventos.visibility = View.GONE
+                rvEventos.visibility = View.VISIBLE
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
     private fun cargarTareas() {
-        val tareas = dbHelper.obtenerTodasTareas()
-        tareaAdapter.actualizarLista(tareas)
-        if (tareas.isEmpty()) {
-            emptyTareas.visibility = View.VISIBLE
-            rvTareas.visibility = View.GONE
-        } else {
-            emptyTareas.visibility = View.GONE
-            rvTareas.visibility = View.VISIBLE
+        try {
+            val tareas = dbHelper.obtenerTodasTareas()
+            tareaAdapter.actualizarLista(tareas)
+            if (tareas.isEmpty()) {
+                emptyTareas.visibility = View.VISIBLE
+                rvTareas.visibility = View.GONE
+            } else {
+                emptyTareas.visibility = View.GONE
+                rvTareas.visibility = View.VISIBLE
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
     private fun cargarCategorias() {
-        val categorias = dbHelper.obtenerTodasCategorias()
-        categoriaAdapter.actualizarLista(categorias)
-        if (categorias.isEmpty()) {
-            emptyCategorias.visibility = View.VISIBLE
-            rvCategorias.visibility = View.GONE
-        } else {
-            emptyCategorias.visibility = View.GONE
-            rvCategorias.visibility = View.VISIBLE
+        try {
+            val categorias = dbHelper.obtenerTodasCategorias()
+            categoriaAdapter.actualizarLista(categorias)
+            if (categorias.isEmpty()) {
+                emptyCategorias.visibility = View.VISIBLE
+                rvCategorias.visibility = View.GONE
+            } else {
+                emptyCategorias.visibility = View.GONE
+                rvCategorias.visibility = View.VISIBLE
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
