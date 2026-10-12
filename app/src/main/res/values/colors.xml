@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <!-- Modern Material 3 Colors -->
+    <color name="md_theme_primary">#00639B</color>
+    <color name="md_theme_onPrimary">#FFFFFF</color>
+    <color name="md_theme_primaryContainer">#C2E8FF</color>
+    <color name="md_theme_onPrimaryContainer">#001D33</color>
+
+    <color name="md_theme_secondary">#51606F</color>
+    <color name="md_theme_onSecondary">#FFFFFF</color>
+    <color name="md_theme_secondaryContainer">#D5E4F6</color>
+    <color name="md_theme_onSecondaryContainer">#0E1D2A</color>
+
+    <color name="md_theme_background">#F8F9FE</color>
+    <color name="md_theme_onBackground">#191C1E</color>
+    <color name="md_theme_surface">#FFFFFF</color>
+    <color name="md_theme_onSurface">#191C1E</color>
+    <color name="md_theme_surfaceVariant">#E0E2EC</color>
+    <color name="md_theme_onSurfaceVariant">#43474E</color>
+
+    <color name="md_theme_error">#BA1A1A</color>
+    <color name="md_theme_errorContainer">#FFDAD6</color>
+    <color name="md_theme_onError">#FFFFFF</color>
+
+    <color name="chip_background">#E3F2FD</color>
+    <color name="chip_text">#0D47A1</color>
+</resources>
