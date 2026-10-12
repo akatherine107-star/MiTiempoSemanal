@@ -1,6 +1,8 @@
 package com.aguilar.tiemposemanal
 
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.ArrayAdapter
@@ -17,6 +19,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import com.aguilar.tiemposemanal.adapter.CategoriaAdapter
 import com.aguilar.tiemposemanal.adapter.TareaAdapter
 import com.aguilar.tiemposemanal.db.DatabaseHelper
@@ -164,66 +167,94 @@ class MainActivity : AppCompatActivity() {
 
     private fun mostrarDialogoCrearCategoria() {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_categoria, null)
+        val tilNombre = dialogView.findViewById<TextInputLayout>(R.id.tilNombreCategoria)
         val etNombre = dialogView.findViewById<TextInputEditText>(R.id.etNombreCategoria)
 
-        AlertDialog.Builder(this)
+        etNombre.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                tilNombre.error = null
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
+
+        val dialog = AlertDialog.Builder(this)
             .setTitle(R.string.title_nueva_categoria)
             .setView(dialogView)
-            .setPositiveButton(R.string.btn_guardar) { _, _ ->
-                val nombre = etNombre.text.toString().trim()
-                if (nombre.isBlank()) {
-                    Toast.makeText(this, getString(R.string.error_empty_cat_name), Toast.LENGTH_SHORT).show()
-                    return@setPositiveButton
-                }
-
-                if (dbHelper.existeCategoria(nombre)) {
-                    Toast.makeText(this, getString(R.string.error_cat_exists), Toast.LENGTH_LONG).show()
-                    return@setPositiveButton
-                }
-
-                val result = dbHelper.insertarCategoria(nombre)
-                if (result != -1L) {
-                    cargarCategorias()
-                    Toast.makeText(this, "Categoría creada con éxito", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(this, getString(R.string.error_cat_exists), Toast.LENGTH_LONG).show()
-                }
-            }
+            .setPositiveButton(R.string.btn_guardar, null)
             .setNegativeButton(R.string.btn_cancelar, null)
-            .show()
+            .create()
+
+        dialog.show()
+
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val nombre = etNombre.text.toString().trim()
+            if (nombre.isBlank()) {
+                tilNombre.error = getString(R.string.error_empty_cat_name)
+                return@setOnClickListener
+            }
+
+            if (dbHelper.existeCategoria(nombre)) {
+                tilNombre.error = getString(R.string.error_cat_exists)
+                return@setOnClickListener
+            }
+
+            val result = dbHelper.insertarCategoria(nombre)
+            if (result != -1L) {
+                cargarCategorias()
+                Toast.makeText(this, "Categoría creada con éxito", Toast.LENGTH_SHORT).show()
+                dialog.dismiss()
+            } else {
+                tilNombre.error = getString(R.string.error_cat_exists)
+            }
+        }
     }
 
     private fun mostrarDialogoEditarCategoria(categoria: Categoria) {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_categoria, null)
+        val tilNombre = dialogView.findViewById<TextInputLayout>(R.id.tilNombreCategoria)
         val etNombre = dialogView.findViewById<TextInputEditText>(R.id.etNombreCategoria)
         etNombre.setText(categoria.nombre)
 
-        AlertDialog.Builder(this)
+        etNombre.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                tilNombre.error = null
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
+
+        val dialog = AlertDialog.Builder(this)
             .setTitle(R.string.title_editar_categoria)
             .setView(dialogView)
-            .setPositiveButton(R.string.btn_guardar) { _, _ ->
-                val nuevoNombre = etNombre.text.toString().trim()
-                if (nuevoNombre.isBlank()) {
-                    Toast.makeText(this, getString(R.string.error_empty_cat_name), Toast.LENGTH_SHORT).show()
-                    return@setPositiveButton
-                }
-
-                if (dbHelper.existeCategoria(nuevoNombre, excludeId = categoria.id)) {
-                    Toast.makeText(this, getString(R.string.error_cat_exists), Toast.LENGTH_LONG).show()
-                    return@setPositiveButton
-                }
-
-                val exito = dbHelper.actualizarCategoria(categoria.id, nuevoNombre)
-                if (exito) {
-                    cargarCategorias()
-                    cargarTareas() // Actualizar vista de tareas si cambió la categoría
-                    Toast.makeText(this, "Categoría actualizada", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(this, getString(R.string.error_cat_exists), Toast.LENGTH_LONG).show()
-                }
-            }
+            .setPositiveButton(R.string.btn_guardar, null)
             .setNegativeButton(R.string.btn_cancelar, null)
-            .show()
+            .create()
+
+        dialog.show()
+
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val nuevoNombre = etNombre.text.toString().trim()
+            if (nuevoNombre.isBlank()) {
+                tilNombre.error = getString(R.string.error_empty_cat_name)
+                return@setOnClickListener
+            }
+
+            if (dbHelper.existeCategoria(nuevoNombre, excludeId = categoria.id)) {
+                tilNombre.error = getString(R.string.error_cat_exists)
+                return@setOnClickListener
+            }
+
+            val exito = dbHelper.actualizarCategoria(categoria.id, nuevoNombre)
+            if (exito) {
+                cargarCategorias()
+                cargarTareas()
+                Toast.makeText(this, "Categoría actualizada", Toast.LENGTH_SHORT).show()
+                dialog.dismiss()
+            } else {
+                tilNombre.error = getString(R.string.error_cat_exists)
+            }
+        }
     }
 
     private fun intentarEliminarCategoria(categoria: Categoria) {
@@ -261,6 +292,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_tarea, null)
+        val tilNombre = dialogView.findViewById<TextInputLayout>(R.id.tilNombreTarea)
         val etNombre = dialogView.findViewById<TextInputEditText>(R.id.etNombreTarea)
         val spinner = dialogView.findViewById<Spinner>(R.id.spinnerCategoria)
 
@@ -268,43 +300,57 @@ class MainActivity : AppCompatActivity() {
         spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         spinner.adapter = spinnerAdapter
 
-        AlertDialog.Builder(this)
+        etNombre.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                tilNombre.error = null
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
+
+        val dialog = AlertDialog.Builder(this)
             .setTitle(R.string.title_nueva_tarea)
             .setView(dialogView)
-            .setPositiveButton(R.string.btn_guardar) { _, _ ->
-                val nombre = etNombre.text.toString().trim()
-                if (nombre.isBlank()) {
-                    Toast.makeText(this, getString(R.string.error_empty_task_name), Toast.LENGTH_SHORT).show()
-                    return@setPositiveButton
-                }
-
-                val categoriaSeleccionada = spinner.selectedItem as? Categoria
-                if (categoriaSeleccionada == null) {
-                    Toast.makeText(this, getString(R.string.error_no_category_selected), Toast.LENGTH_SHORT).show()
-                    return@setPositiveButton
-                }
-
-                if (dbHelper.existeTarea(nombre)) {
-                    Toast.makeText(this, getString(R.string.error_task_exists), Toast.LENGTH_LONG).show()
-                    return@setPositiveButton
-                }
-
-                val result = dbHelper.insertarTarea(nombre, categoriaSeleccionada.id)
-                if (result != -1L) {
-                    cargarTareas()
-                    cargarCategorias() // Actualizar contador en categorías
-                    Toast.makeText(this, "Tarea creada con éxito", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(this, getString(R.string.error_task_exists), Toast.LENGTH_LONG).show()
-                }
-            }
+            .setPositiveButton(R.string.btn_guardar, null)
             .setNegativeButton(R.string.btn_cancelar, null)
-            .show()
+            .create()
+
+        dialog.show()
+
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val nombre = etNombre.text.toString().trim()
+            if (nombre.isBlank()) {
+                tilNombre.error = getString(R.string.error_empty_task_name)
+                return@setOnClickListener
+            }
+
+            val categoriaSeleccionada = spinner.selectedItem as? Categoria
+            if (categoriaSeleccionada == null) {
+                Toast.makeText(this, getString(R.string.error_no_category_selected), Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            if (dbHelper.existeTarea(nombre)) {
+                tilNombre.error = getString(R.string.error_task_exists)
+                return@setOnClickListener
+            }
+
+            val result = dbHelper.insertarTarea(nombre, categoriaSeleccionada.id)
+            if (result != -1L) {
+                cargarTareas()
+                cargarCategorias()
+                Toast.makeText(this, "Tarea creada con éxito", Toast.LENGTH_SHORT).show()
+                dialog.dismiss()
+            } else {
+                tilNombre.error = getString(R.string.error_task_exists)
+            }
+        }
     }
 
     private fun mostrarDialogoEditarTarea(tarea: Tarea) {
         val categorias = dbHelper.obtenerTodasCategorias()
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_tarea, null)
+        val tilNombre = dialogView.findViewById<TextInputLayout>(R.id.tilNombreTarea)
         val etNombre = dialogView.findViewById<TextInputEditText>(R.id.etNombreTarea)
         val spinner = dialogView.findViewById<Spinner>(R.id.spinnerCategoria)
 
@@ -314,44 +360,56 @@ class MainActivity : AppCompatActivity() {
         spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         spinner.adapter = spinnerAdapter
 
-        // Seleccionar la categoría actual
         val index = categorias.indexOfFirst { it.id == tarea.categoriaId }
         if (index >= 0) {
             spinner.setSelection(index)
         }
 
-        AlertDialog.Builder(this)
+        etNombre.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                tilNombre.error = null
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
+
+        val dialog = AlertDialog.Builder(this)
             .setTitle(R.string.title_editar_tarea)
             .setView(dialogView)
-            .setPositiveButton(R.string.btn_guardar) { _, _ ->
-                val nuevoNombre = etNombre.text.toString().trim()
-                if (nuevoNombre.isBlank()) {
-                    Toast.makeText(this, getString(R.string.error_empty_task_name), Toast.LENGTH_SHORT).show()
-                    return@setPositiveButton
-                }
-
-                val categoriaSeleccionada = spinner.selectedItem as? Categoria
-                if (categoriaSeleccionada == null) {
-                    Toast.makeText(this, getString(R.string.error_no_category_selected), Toast.LENGTH_SHORT).show()
-                    return@setPositiveButton
-                }
-
-                if (dbHelper.existeTarea(nuevoNombre, excludeId = tarea.id)) {
-                    Toast.makeText(this, getString(R.string.error_task_exists), Toast.LENGTH_LONG).show()
-                    return@setPositiveButton
-                }
-
-                val exito = dbHelper.actualizarTarea(tarea.id, nuevoNombre, categoriaSeleccionada.id)
-                if (exito) {
-                    cargarTareas()
-                    cargarCategorias()
-                    Toast.makeText(this, "Tarea actualizada", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(this, getString(R.string.error_task_exists), Toast.LENGTH_LONG).show()
-                }
-            }
+            .setPositiveButton(R.string.btn_guardar, null)
             .setNegativeButton(R.string.btn_cancelar, null)
-            .show()
+            .create()
+
+        dialog.show()
+
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val nuevoNombre = etNombre.text.toString().trim()
+            if (nuevoNombre.isBlank()) {
+                tilNombre.error = getString(R.string.error_empty_task_name)
+                return@setOnClickListener
+            }
+
+            val categoriaSeleccionada = spinner.selectedItem as? Categoria
+            if (categoriaSeleccionada == null) {
+                Toast.makeText(this, getString(R.string.error_no_category_selected), Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            if (dbHelper.existeTarea(nuevoNombre, excludeId = tarea.id)) {
+                tilNombre.error = getString(R.string.error_task_exists)
+                return@setOnClickListener
+            }
+
+            val exito = dbHelper.actualizarTarea(tarea.id, nuevoNombre, categoriaSeleccionada.id)
+            if (exito) {
+                cargarTareas()
+                cargarCategorias()
+                Toast.makeText(this, "Tarea actualizada", Toast.LENGTH_SHORT).show()
+                dialog.dismiss()
+            } else {
+                tilNombre.error = getString(R.string.error_task_exists)
+            }
+        }
     }
 
     private fun mostrarConfirmacionEliminarTarea(tarea: Tarea) {
@@ -364,6 +422,8 @@ class MainActivity : AppCompatActivity() {
                     cargarTareas()
                     cargarCategorias()
                     Toast.makeText(this, "Tarea eliminada", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this, "No se pudo eliminar la tarea", Toast.LENGTH_SHORT).show()
                 }
             }
             .setNegativeButton(R.string.btn_cancelar, null)
