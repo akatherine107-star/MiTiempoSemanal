@@ -9,6 +9,8 @@ import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import android.widget.Button
+import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
@@ -30,9 +32,13 @@ import com.aguilar.tiemposemanal.adapter.TareaAdapter
 import com.aguilar.tiemposemanal.db.DatabaseHelper
 import com.aguilar.tiemposemanal.model.Categoria
 import com.aguilar.tiemposemanal.model.Tarea
+import java.time.DayOfWeek
 import java.time.Duration
+import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
@@ -62,6 +68,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnIniciar: Button
     private lateinit var btnFinalizar: Button
 
+    // Vistas de Estadísticas Semanales (Sprint 3)
+    private lateinit var txtTituloSemana: TextView
+    private lateinit var llContenedorEstadisticasSemana: LinearLayout
+
     private lateinit var eventoAdapter: EventoAdapter
     private lateinit var tareaAdapter: TareaAdapter
     private lateinit var categoriaAdapter: CategoriaAdapter
@@ -71,6 +81,7 @@ class MainActivity : AppCompatActivity() {
 
     private val dbDateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
     private val displayDateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")
+    private val dateOnlyFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -98,6 +109,7 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         actualizarEstadoEventoEnCurso()
+        cargarEstadisticasSemanales()
     }
 
     private fun initViews() {
@@ -116,7 +128,7 @@ class MainActivity : AppCompatActivity() {
 
         fabAdd = findViewById(R.id.fabAdd)
 
-        // Eventos views
+        // Eventos views (Sprint 2)
         actvTareaBusqueda = findViewById(R.id.actvTareaBusqueda)
         chipCategoriaSeleccionada = findViewById(R.id.chipCategoriaSeleccionada)
         panelEventoEnCurso = findViewById(R.id.panelEventoEnCurso)
@@ -124,6 +136,10 @@ class MainActivity : AppCompatActivity() {
         txtHoraInicioEnCurso = findViewById(R.id.txtHoraInicioEnCurso)
         btnIniciar = findViewById(R.id.btnIniciar)
         btnFinalizar = findViewById(R.id.btnFinalizar)
+
+        // Estadísticas views (Sprint 3)
+        txtTituloSemana = findViewById(R.id.txtTituloSemana)
+        llContenedorEstadisticasSemana = findViewById(R.id.llContenedorEstadisticasSemana)
 
         val txtAppSubtitle = findViewById<TextView>(R.id.txtAppSubtitle)
         txtAppSubtitle.text = getString(R.string.app_subtitle)
@@ -342,6 +358,7 @@ class MainActivity : AppCompatActivity() {
                 val nuevaTarea = Tarea(resultId.toInt(), nombreTarea, categoriaSeleccionada.id, categoriaSeleccionada.nombre)
                 cargarTareas() // Actualizar lista de Tareas Sprint 1
                 cargarCategorias()
+                cargarEstadisticasSemanales() // Actualizar panel dinámico Sprint 3
 
                 Toast.makeText(this, "Tarea creada: ${nuevaTarea.nombre}", Toast.LENGTH_SHORT).show()
                 dialog.dismiss()
@@ -400,6 +417,7 @@ class MainActivity : AppCompatActivity() {
 
                 cargarEventos()
                 actualizarEstadoEventoEnCurso()
+                cargarEstadisticasSemanales() // Actualizar panel de porcentajes automáticamente
             } else {
                 Toast.makeText(this, "Error al finalizar el evento", Toast.LENGTH_SHORT).show()
             }
@@ -433,6 +451,72 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // --- ESTADÍSTICAS SEMANALES DINOÁMICAS (HU-06 SPRINT 3) ---
+
+    private fun cargarEstadisticasSemanales() {
+        try {
+            val hoy = LocalDate.now()
+            val lunes = hoy.with(DayOfWeek.MONDAY)
+            val domingo = hoy.with(DayOfWeek.SUNDAY)
+
+            val inicioSemanaISO = lunes.atStartOfDay().format(dbDateFormatter)
+            val finSemanaISO = domingo.atTime(LocalTime.MAX).format(dbDateFormatter)
+
+            txtTituloSemana.text = "Semana ${lunes.format(dateOnlyFormatter)} – ${domingo.format(dateOnlyFormatter)}"
+
+            val estadisticas = dbHelper.obtenerEstadisticasSemanalesPorCategoria(inicioSemanaISO, finSemanaISO)
+
+            llContenedorEstadisticasSemana.removeAllViews()
+
+            var sumaSegundosRegistrados = 0L
+
+            for (stat in estadisticas) {
+                sumaSegundosRegistrados += stat.totalSegundos
+
+                val rowView = LayoutInflater.from(this).inflate(R.layout.item_fila_estadistica, llContenedorEstadisticasSemana, false)
+                val txtNombre = rowView.findViewById<TextView>(R.id.txtNombreCategoria)
+                val txtHorasYPorcentaje = rowView.findViewById<TextView>(R.id.txtHorasYPorcentaje)
+                val progressBar = rowView.findViewById<ProgressBar>(R.id.progressBarCategoria)
+
+                val horasDecimal = stat.totalSegundos / 3600.0
+                val porcentaje = stat.porcentajeSemanal
+
+                txtNombre.text = stat.categoriaNombre
+                txtHorasYPorcentaje.text = String.format(Locale.US, "%.1f h (%.1f %%)", horasDecimal, porcentaje)
+
+                progressBar.max = 1000
+                progressBar.progress = (porcentaje * 10).toInt().coerceIn(0, 1000)
+
+                llContenedorEstadisticasSemana.addView(rowView)
+            }
+
+            // Fila adicional "Sin registrar"
+            val totalSegundosSemana = 168L * 3600L // 604,800 segundos
+            val segundosSinRegistrar = (totalSegundosSemana - sumaSegundosRegistrados).coerceAtLeast(0L)
+            val horasSinRegistrar = segundosSinRegistrar / 3600.0
+            val porcentajeSinRegistrar = (horasSinRegistrar / 168.0) * 100.0
+
+            val rowSinRegistrar = LayoutInflater.from(this).inflate(R.layout.item_fila_estadistica, llContenedorEstadisticasSemana, false)
+            val txtNombreSinReg = rowSinRegistrar.findViewById<TextView>(R.id.txtNombreCategoria)
+            val txtHorasYPorcentajeSinReg = rowSinRegistrar.findViewById<TextView>(R.id.txtHorasYPorcentaje)
+            val progressBarSinReg = rowSinRegistrar.findViewById<ProgressBar>(R.id.progressBarCategoria)
+
+            txtNombreSinReg.text = getString(R.string.label_sin_registrar)
+            txtNombreSinReg.setTextColor(getColor(R.color.md_theme_secondary))
+            txtHorasYPorcentajeSinReg.text = String.format(Locale.US, "%.1f h (%.1f %%)", horasSinRegistrar, porcentajeSinRegistrar)
+            txtHorasYPorcentajeSinReg.setTextColor(getColor(R.color.md_theme_secondary))
+
+            progressBarSinReg.max = 1000
+            progressBarSinReg.progress = (porcentajeSinRegistrar * 10).toInt().coerceIn(0, 1000)
+            progressBarSinReg.progressTintList = getColorStateList(R.color.md_theme_secondary)
+
+            llContenedorEstadisticasSemana.addView(rowSinRegistrar)
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     private fun formatearFecha(fechaIso: String): String {
         return try {
             val dt = LocalDateTime.parse(fechaIso, dbDateFormatter)
@@ -449,6 +533,7 @@ class MainActivity : AppCompatActivity() {
         cargarTareas()
         cargarCategorias()
         actualizarEstadoEventoEnCurso()
+        cargarEstadisticasSemanales()
     }
 
     private fun cargarEventos() {
@@ -555,6 +640,7 @@ class MainActivity : AppCompatActivity() {
             val result = dbHelper.insertarCategoria(nombre)
             if (result != -1L) {
                 cargarCategorias()
+                cargarEstadisticasSemanales() // Actualizar panel si creó una nueva categoría
                 Toast.makeText(this, "Categoría creada con éxito", Toast.LENGTH_SHORT).show()
                 dialog.dismiss()
             } else {
@@ -603,6 +689,7 @@ class MainActivity : AppCompatActivity() {
                 cargarCategorias()
                 cargarTareas()
                 cargarEventos()
+                cargarEstadisticasSemanales()
                 Toast.makeText(this, "Categoría actualizada", Toast.LENGTH_SHORT).show()
                 dialog.dismiss()
             } else {
@@ -628,6 +715,7 @@ class MainActivity : AppCompatActivity() {
                         val exito = dbHelper.eliminarCategoria(categoria.id)
                         if (exito) {
                             cargarCategorias()
+                            cargarEstadisticasSemanales()
                             Toast.makeText(this, "Categoría eliminada", Toast.LENGTH_SHORT).show()
                         } else {
                             Toast.makeText(this, getString(R.string.error_cat_has_tasks), Toast.LENGTH_LONG).show()
@@ -763,6 +851,7 @@ class MainActivity : AppCompatActivity() {
                 cargarTareas()
                 cargarCategorias()
                 cargarEventos()
+                cargarEstadisticasSemanales()
                 Toast.makeText(this, "Tarea actualizada", Toast.LENGTH_SHORT).show()
                 dialog.dismiss()
             } else {
@@ -783,6 +872,7 @@ class MainActivity : AppCompatActivity() {
                         cargarTareas()
                         cargarCategorias()
                         cargarEventos()
+                        cargarEstadisticasSemanales()
                         Toast.makeText(this, "Tarea eliminada con éxito", Toast.LENGTH_SHORT).show()
                     } else {
                         Toast.makeText(this, "No se pudo eliminar la tarea", Toast.LENGTH_SHORT).show()

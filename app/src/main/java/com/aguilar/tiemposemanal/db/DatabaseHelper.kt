@@ -5,6 +5,7 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import com.aguilar.tiemposemanal.model.Categoria
+import com.aguilar.tiemposemanal.model.EstadisticaCategoria
 import com.aguilar.tiemposemanal.model.Evento
 import com.aguilar.tiemposemanal.model.Tarea
 
@@ -479,6 +480,42 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
                     val duracion = cursor.getLong(cursor.getColumnIndexOrThrow("duracion"))
                     val estado = cursor.getInt(cursor.getColumnIndexOrThrow("estado"))
                     lista.add(Evento(id, tareaId, tareaNombre, catNombre, fechaInicio, fechaFin, duracion, estado == 1))
+                } while (cursor.moveToNext())
+            }
+            cursor.close()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return lista
+    }
+
+    // --- ESTADÍSTICAS SEMANALES SPRINT 3 (SUM Y GROUP BY) ---
+
+    fun obtenerEstadisticasSemanalesPorCategoria(inicioSemanaISO: String, finSemanaISO: String): List<EstadisticaCategoria> {
+        val lista = mutableListOf<EstadisticaCategoria>()
+        try {
+            val db = readableDatabase
+            val query = """
+                SELECT 
+                    c.$COL_CAT_ID AS cat_id, 
+                    c.$COL_CAT_NOMBRE AS cat_nombre, 
+                    COALESCE(SUM(e.$COL_EVT_DURACION), 0) AS total_segundos
+                FROM $TABLE_CATEGORIAS c
+                LEFT JOIN $TABLE_TAREAS t ON t.$COL_TAREA_CAT_ID = c.$COL_CAT_ID
+                LEFT JOIN $TABLE_EVENTOS e ON e.$COL_EVT_TAREA_ID = t.$COL_TAREA_ID 
+                    AND e.$COL_EVT_ESTADO = 0 
+                    AND e.$COL_EVT_FECHA_INICIO >= ? 
+                    AND e.$COL_EVT_FECHA_INICIO <= ?
+                GROUP BY c.$COL_CAT_ID, c.$COL_CAT_NOMBRE
+                ORDER BY c.$COL_CAT_NOMBRE ASC
+            """.trimIndent()
+            val cursor = db.rawQuery(query, arrayOf(inicioSemanaISO, finSemanaISO))
+            if (cursor.moveToFirst()) {
+                do {
+                    val catId = cursor.getInt(cursor.getColumnIndexOrThrow("cat_id"))
+                    val catNombre = cursor.getString(cursor.getColumnIndexOrThrow("cat_nombre"))
+                    val totalSeg = cursor.getLong(cursor.getColumnIndexOrThrow("total_segundos"))
+                    lista.add(EstadisticaCategoria(catId, catNombre, totalSeg))
                 } while (cursor.moveToNext())
             }
             cursor.close()

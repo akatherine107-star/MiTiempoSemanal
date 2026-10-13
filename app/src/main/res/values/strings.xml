@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">MiTiempoSemanal</string>
-    <string name="app_subtitle">Katherine Aguilar · v0.2.0 (2)</string>
+    <string name="app_subtitle">Katherine Aguilar · v0.3.0 (3)</string>
 
     <string name="tab_eventos">Eventos</string>
     <string name="tab_tareas">Tareas</string>
@@ -21,12 +21,15 @@
     <string name="btn_iniciar">Iniciar</string>
     <string name="btn_finalizar">Finalizar</string>
 
-    <string name="hint_buscar_tarea">Buscar o escribir tarea...</string>
+    <string name="hint_buscar_tarea">Buscar o escribir tarea&#8230;</string>
     <string name="label_evento_en_curso">Evento en curso</string>
     <string name="label_inicio">Inicio:</string>
     <string name="label_fin">Fin:</string>
     <string name="label_duracion">Duración:</string>
     <string name="label_sin_categoria">Seleccione una categoría para esta nueva tarea</string>
+
+    <string name="title_resumen_semanal">Resumen de Tiempo Semanal</string>
+    <string name="label_sin_registrar">Sin registrar</string>
 
     <string name="confirm_delete_category">¿Desea eliminar la categoría \"%1$s\"?</string>
     <string name="confirm_delete_task">¿Desea eliminar la tarea \"%1$s\"?</string>

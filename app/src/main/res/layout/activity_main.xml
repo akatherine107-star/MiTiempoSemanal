@@ -75,12 +75,56 @@
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
-        <!-- Container Eventos (Sprint 2) -->
+        <!-- Container Eventos (Sprint 2 & 3) -->
         <LinearLayout
             android:id="@+id/containerEventos"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical">
+
+            <!-- Panel de Estadísticas Semanales (Sprint 3) -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardPanelSemanal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="12dp"
+                android:layout_marginTop="12dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="3dp"
+                app:strokeColor="@color/md_theme_surfaceVariant"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:id="@+id/txtTituloSemana"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/md_theme_onSurface"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        tools:text="Semana 12/10/2026 – 18/10/2026" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginVertical="8dp"
+                        android:background="@color/md_theme_surfaceVariant" />
+
+                    <!-- Contenedor dinámico de filas por categoría -->
+                    <LinearLayout
+                        android:id="@+id/llContenedorEstadisticasSemana"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- Card de Control de Registro de Tiempo -->
             <com.google.android.material.card.MaterialCardView
