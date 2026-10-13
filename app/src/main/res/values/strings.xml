@@ -1,8 +1,9 @@
 <resources>
     <string name="app_name">MiTiempoSemanal</string>
-    <string name="app_subtitle">Katherine Aguilar · v0.3.0 (3)</string>
+    <string name="app_subtitle">Katherine Aguilar · v1.0.0 (4)</string>
 
     <string name="tab_eventos">Eventos</string>
+    <string name="tab_reportes">Reportes</string>
     <string name="tab_tareas">Tareas</string>
     <string name="tab_categorias">Categorías</string>
 
@@ -31,6 +32,9 @@
     <string name="title_resumen_semanal">Resumen de Tiempo Semanal</string>
     <string name="label_sin_registrar">Sin registrar</string>
 
+    <string name="label_seleccionar_semana">Seleccionar semana:</string>
+    <string name="label_eventos_de_la_semana">Eventos registrados en esta semana</string>
+
     <string name="confirm_delete_category">¿Desea eliminar la categoría \"%1$s\"?</string>
     <string name="confirm_delete_task">¿Desea eliminar la tarea \"%1$s\"?</string>
 
@@ -49,4 +53,7 @@
 
     <string name="empty_events_title">No hay eventos registrados</string>
     <string name="empty_events_subtitle">Escribe una tarea arriba y presiona Iniciar para registrar tu tiempo</string>
+
+    <string name="empty_reports_title">Aún no hay reportes</string>
+    <string name="empty_reports_subtitle">Los reportes se generan automáticamente al finalizar cada semana</string>
 </resources>

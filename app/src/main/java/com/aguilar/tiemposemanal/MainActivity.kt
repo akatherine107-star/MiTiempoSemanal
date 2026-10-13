@@ -31,6 +31,7 @@ import com.aguilar.tiemposemanal.adapter.EventoAdapter
 import com.aguilar.tiemposemanal.adapter.TareaAdapter
 import com.aguilar.tiemposemanal.db.DatabaseHelper
 import com.aguilar.tiemposemanal.model.Categoria
+import com.aguilar.tiemposemanal.model.ReporteSemana
 import com.aguilar.tiemposemanal.model.Tarea
 import java.time.DayOfWeek
 import java.time.Duration
@@ -46,14 +47,17 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var tabLayout: TabLayout
     private lateinit var containerEventos: View
+    private lateinit var containerReportes: View
     private lateinit var containerTareas: View
     private lateinit var containerCategorias: View
 
     private lateinit var rvEventos: RecyclerView
+    private lateinit var rvEventosReporte: RecyclerView
     private lateinit var rvTareas: RecyclerView
     private lateinit var rvCategorias: RecyclerView
 
     private lateinit var emptyEventos: View
+    private lateinit var emptyReportes: View
     private lateinit var emptyTareas: View
     private lateinit var emptyCategorias: View
 
@@ -72,16 +76,25 @@ class MainActivity : AppCompatActivity() {
     private lateinit var txtTituloSemana: TextView
     private lateinit var llContenedorEstadisticasSemana: LinearLayout
 
+    // Vistas de Reportes Semanales (Sprint 4)
+    private lateinit var spinnerSemanasReporte: Spinner
+    private lateinit var cardReporteSeleccionado: View
+    private lateinit var txtTituloReporteSeleccionado: TextView
+    private lateinit var llContenedorReporteSeleccionado: LinearLayout
+    private lateinit var txtHeaderEventosReporte: TextView
+
     private lateinit var eventoAdapter: EventoAdapter
+    private lateinit var eventoReporteAdapter: EventoAdapter
     private lateinit var tareaAdapter: TareaAdapter
     private lateinit var categoriaAdapter: CategoriaAdapter
 
-    private var currentTab = 0 // 0: Eventos, 1: Tareas, 2: Categorías
+    private var currentTab = 0 // 0: Eventos, 1: Reportes, 2: Tareas, 3: Categorías
     private var tareaSeleccionadaBusqueda: Tarea? = null
 
     private val dbDateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
     private val displayDateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")
     private val dateOnlyFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+    private val isoDateOnlyFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -103,26 +116,34 @@ class MainActivity : AppCompatActivity() {
         setupBotonesEvento()
         setupFab()
 
+        // Cierre semanal automático al iniciar (Sprint 4)
+        cerrarSemanasPasadasAutomaticamente()
+
         cargarDatos()
     }
 
     override fun onResume() {
         super.onResume()
+        cerrarSemanasPasadasAutomaticamente()
         actualizarEstadoEventoEnCurso()
         cargarEstadisticasSemanales()
+        cargarModuloReportes()
     }
 
     private fun initViews() {
         tabLayout = findViewById(R.id.tabLayout)
         containerEventos = findViewById(R.id.containerEventos)
+        containerReportes = findViewById(R.id.containerReportes)
         containerTareas = findViewById(R.id.containerTareas)
         containerCategorias = findViewById(R.id.containerCategorias)
 
         rvEventos = findViewById(R.id.rvEventos)
+        rvEventosReporte = findViewById(R.id.rvEventosReporte)
         rvTareas = findViewById(R.id.rvTareas)
         rvCategorias = findViewById(R.id.rvCategorias)
 
         emptyEventos = findViewById(R.id.emptyEventos)
+        emptyReportes = findViewById(R.id.emptyReportes)
         emptyTareas = findViewById(R.id.emptyTareas)
         emptyCategorias = findViewById(R.id.emptyCategorias)
 
@@ -140,6 +161,13 @@ class MainActivity : AppCompatActivity() {
         // Estadísticas views (Sprint 3)
         txtTituloSemana = findViewById(R.id.txtTituloSemana)
         llContenedorEstadisticasSemana = findViewById(R.id.llContenedorEstadisticasSemana)
+
+        // Reportes views (Sprint 4)
+        spinnerSemanasReporte = findViewById(R.id.spinnerSemanasReporte)
+        cardReporteSeleccionado = findViewById(R.id.cardReporteSeleccionado)
+        txtTituloReporteSeleccionado = findViewById(R.id.txtTituloReporteSeleccionado)
+        llContenedorReporteSeleccionado = findViewById(R.id.llContenedorReporteSeleccionado)
+        txtHeaderEventosReporte = findViewById(R.id.txtHeaderEventosReporte)
 
         val txtAppSubtitle = findViewById<TextView>(R.id.txtAppSubtitle)
         txtAppSubtitle.text = getString(R.string.app_subtitle)
@@ -161,19 +189,30 @@ class MainActivity : AppCompatActivity() {
         when (currentTab) {
             0 -> {
                 containerEventos.visibility = View.VISIBLE
+                containerReportes.visibility = View.GONE
                 containerTareas.visibility = View.GONE
                 containerCategorias.visibility = View.GONE
                 fabAdd.visibility = View.GONE
             }
             1 -> {
                 containerEventos.visibility = View.GONE
+                containerReportes.visibility = View.VISIBLE
+                containerTareas.visibility = View.GONE
+                containerCategorias.visibility = View.GONE
+                fabAdd.visibility = View.GONE
+                cargarModuloReportes()
+            }
+            2 -> {
+                containerEventos.visibility = View.GONE
+                containerReportes.visibility = View.GONE
                 containerTareas.visibility = View.VISIBLE
                 containerCategorias.visibility = View.GONE
                 fabAdd.visibility = View.VISIBLE
                 fabAdd.text = getString(R.string.title_nueva_tarea)
             }
-            2 -> {
+            3 -> {
                 containerEventos.visibility = View.GONE
+                containerReportes.visibility = View.GONE
                 containerTareas.visibility = View.GONE
                 containerCategorias.visibility = View.VISIBLE
                 fabAdd.visibility = View.VISIBLE
@@ -183,12 +222,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupRecyclerViews() {
-        // RecyclerView Eventos
+        // RecyclerView Eventos (Sprint 2)
         rvEventos.layoutManager = LinearLayoutManager(this)
         eventoAdapter = EventoAdapter(emptyList())
         rvEventos.adapter = eventoAdapter
 
-        // RecyclerView Tareas
+        // RecyclerView Eventos Reporte (Sprint 4)
+        rvEventosReporte.layoutManager = LinearLayoutManager(this)
+        eventoReporteAdapter = EventoAdapter(emptyList())
+        rvEventosReporte.adapter = eventoReporteAdapter
+
+        // RecyclerView Tareas (Sprint 1)
         rvTareas.layoutManager = LinearLayoutManager(this)
         tareaAdapter = TareaAdapter(
             listaTareas = emptyList(),
@@ -197,7 +241,7 @@ class MainActivity : AppCompatActivity() {
         )
         rvTareas.adapter = tareaAdapter
 
-        // RecyclerView Categorías
+        // RecyclerView Categorías (Sprint 1)
         rvCategorias.layoutManager = LinearLayoutManager(this)
         categoriaAdapter = CategoriaAdapter(
             listaCategorias = emptyList(),
@@ -206,6 +250,164 @@ class MainActivity : AppCompatActivity() {
             onDeleteClick = { categoria -> intentarEliminarCategoria(categoria) }
         )
         rvCategorias.adapter = categoriaAdapter
+    }
+
+    // --- CIERRE SEMANAL AUTOMÁTICO (HU-07 SPRINT 4) ---
+
+    private fun cerrarSemanasPasadasAutomaticamente() {
+        try {
+            val hoy = LocalDate.now()
+            val lunesActual = hoy.with(DayOfWeek.MONDAY)
+
+            val fechaPrimerEventoStr = dbHelper.obtenerFechaInicioPrimerEventoConcluido() ?: return
+
+            val fechaPrimerEvento = try {
+                LocalDateTime.parse(fechaPrimerEventoStr, dbDateFormatter).toLocalDate()
+            } catch (e: Exception) {
+                return
+            }
+
+            var semanaLunes = fechaPrimerEvento.with(DayOfWeek.MONDAY)
+
+            // Recorrer todas las semanas pasadas hasta llegar a la semana actual
+            while (semanaLunes.isBefore(lunesActual)) {
+                val semanaDomingo = semanaLunes.plusDays(6)
+                val semanaInicioStr = semanaLunes.format(isoDateOnlyFormatter)
+                val semanaFinStr = semanaDomingo.format(isoDateOnlyFormatter)
+
+                // Verificar si esta semana terminada ya tiene reporte guardado
+                if (!dbHelper.existeReporteSemana(semanaInicioStr)) {
+                    val inicioISO = semanaLunes.atStartOfDay().format(dbDateFormatter)
+                    val finISO = semanaDomingo.atTime(LocalTime.MAX).format(dbDateFormatter)
+
+                    val stats = dbHelper.obtenerEstadisticasSemanalesPorCategoria(inicioISO, finISO)
+
+                    // Solo guardar si existen eventos concluidos en esa semana
+                    if (stats.any { it.totalSegundos > 0 }) {
+                        for (stat in stats) {
+                            dbHelper.guardarReporteCategoria(
+                                semanaInicioStr,
+                                semanaFinStr,
+                                stat.categoriaId,
+                                stat.totalSegundos,
+                                stat.porcentajeSemanal
+                            )
+                        }
+                    }
+                }
+                semanaLunes = semanaLunes.plusWeeks(1)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    // --- MÓDULO DE REPORTES SEMANALES (HU-08 SPRINT 4) ---
+
+    private fun cargarModuloReportes() {
+        try {
+            val semanas = dbHelper.obtenerSemanasConReporte()
+
+            if (semanas.isEmpty()) {
+                emptyReportes.visibility = View.VISIBLE
+                cardReporteSeleccionado.visibility = View.GONE
+                txtHeaderEventosReporte.visibility = View.GONE
+                rvEventosReporte.visibility = View.GONE
+                spinnerSemanasReporte.visibility = View.GONE
+                return
+            }
+
+            emptyReportes.visibility = View.GONE
+            cardReporteSeleccionado.visibility = View.VISIBLE
+            txtHeaderEventosReporte.visibility = View.VISIBLE
+            rvEventosReporte.visibility = View.VISIBLE
+            spinnerSemanasReporte.visibility = View.VISIBLE
+
+            val spinnerAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, semanas)
+            spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            spinnerSemanasReporte.adapter = spinnerAdapter
+
+            spinnerSemanasReporte.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                    val reporteSel = parent?.getItemAtPosition(position) as? ReporteSemana
+                    if (reporteSel != null) {
+                        cargarDetalleReporteSemanal(reporteSel)
+                    }
+                }
+
+                override fun onNothingSelected(parent: AdapterView<*>?) {}
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun cargarDetalleReporteSemanal(reporte: ReporteSemana) {
+        try {
+            txtTituloReporteSeleccionado.text = "Semana ${reporte.rangoFormateado}"
+
+            val detalles = dbHelper.obtenerDetallesReportePorSemana(reporte.semanaInicio)
+            llContenedorReporteSeleccionado.removeAllViews()
+
+            var sumaSegundosReporte = 0L
+
+            for (d in detalles) {
+                sumaSegundosReporte += d.totalSegundos
+
+                val rowView = LayoutInflater.from(this).inflate(R.layout.item_fila_estadistica, llContenedorReporteSeleccionado, false)
+                val txtNombre = rowView.findViewById<TextView>(R.id.txtNombreCategoria)
+                val txtHorasYPorcentaje = rowView.findViewById<TextView>(R.id.txtHorasYPorcentaje)
+                val progressBar = rowView.findViewById<ProgressBar>(R.id.progressBarCategoria)
+
+                val horasDecimal = d.totalSegundos / 3600.0
+
+                txtNombre.text = d.categoriaNombre
+                txtHorasYPorcentaje.text = String.format(Locale.US, "%.1f h (%.1f %%)", horasDecimal, d.porcentaje)
+
+                progressBar.max = 1000
+                progressBar.progress = (d.porcentaje * 10).toInt().coerceIn(0, 1000)
+
+                llContenedorReporteSeleccionado.addView(rowView)
+            }
+
+            // Fila adicionales Sin Registrar
+            val totalSegundosSemana = 168L * 3600L
+            val segundosSinRegistrar = (totalSegundosSemana - sumaSegundosReporte).coerceAtLeast(0L)
+            val horasSinRegistrar = segundosSinRegistrar / 3600.0
+            val porcentajeSinRegistrar = (horasSinRegistrar / 168.0) * 100.0
+
+            val rowSinRegistrar = LayoutInflater.from(this).inflate(R.layout.item_fila_estadistica, llContenedorReporteSeleccionado, false)
+            val txtNombreSinReg = rowSinRegistrar.findViewById<TextView>(R.id.txtNombreCategoria)
+            val txtHorasYPorcentajeSinReg = rowSinRegistrar.findViewById<TextView>(R.id.txtHorasYPorcentaje)
+            val progressBarSinReg = rowSinRegistrar.findViewById<ProgressBar>(R.id.progressBarCategoria)
+
+            txtNombreSinReg.text = getString(R.string.label_sin_registrar)
+            txtNombreSinReg.setTextColor(getColor(R.color.md_theme_secondary))
+            txtHorasYPorcentajeSinReg.text = String.format(Locale.US, "%.1f h (%.1f %%)", horasSinRegistrar, porcentajeSinRegistrar)
+            txtHorasYPorcentajeSinReg.setTextColor(getColor(R.color.md_theme_secondary))
+
+            progressBarSinReg.max = 1000
+            progressBarSinReg.progress = (porcentajeSinRegistrar * 10).toInt().coerceIn(0, 1000)
+            progressBarSinReg.progressTintList = getColorStateList(R.color.md_theme_secondary)
+
+            llContenedorReporteSeleccionado.addView(rowSinRegistrar)
+
+            // Cargar eventos ocurridos en esa semana específica
+            val inicioISO = LocalDate.parse(reporte.semanaInicio).atStartOfDay().format(dbDateFormatter)
+            val finISO = LocalDate.parse(reporte.semanaFin).atTime(LocalTime.MAX).format(dbDateFormatter)
+
+            val eventosSemana = dbHelper.obtenerEventosPorRangoFechas(inicioISO, finISO)
+            val eventosFormateados = eventosSemana.map { evt ->
+                evt.copy(
+                    fechaInicio = formatearFecha(evt.fechaInicio),
+                    fechaFin = if (evt.fechaFin != null) formatearFecha(evt.fechaFin) else null
+                )
+            }
+            eventoReporteAdapter.actualizarLista(eventosFormateados)
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     // --- BÚSQUEDA DE TAREAS (HU-03) ---
@@ -222,7 +424,6 @@ class MainActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 val texto = s?.toString()?.trim() ?: ""
 
-                // Mantener tareaSeleccionadaBusqueda si coincide con el texto escrito
                 if (tareaSeleccionadaBusqueda != null && !texto.equals(tareaSeleccionadaBusqueda?.nombre, ignoreCase = true)) {
                     tareaSeleccionadaBusqueda = null
                 }
@@ -255,7 +456,7 @@ class MainActivity : AppCompatActivity() {
                     val tarea = sugerenciasActuales.find { "${it.nombre} (${it.categoriaNombre})" == seleccion }
                     if (tarea != null) {
                         tareaSeleccionadaBusqueda = tarea
-                        actvTareaBusqueda.setText(tarea.nombre, false) // false evita re-filtrar el buscador
+                        actvTareaBusqueda.setText(tarea.nombre, false)
                         actvTareaBusqueda.setSelection(tarea.nombre.length)
                         chipCategoriaSeleccionada.text = "Categoría: ${tarea.categoriaNombre}"
                         chipCategoriaSeleccionada.visibility = View.VISIBLE
@@ -278,16 +479,13 @@ class MainActivity : AppCompatActivity() {
                     return@setOnClickListener
                 }
 
-                // Verificar si hay un evento en curso
                 if (dbHelper.obtenerEventoEnCurso() != null) {
                     Toast.makeText(this, "Ya hay un evento en curso. Debes finalizarlo primero.", Toast.LENGTH_LONG).show()
                     return@setOnClickListener
                 }
 
-                // Limpiar paréntesis si vino de sugerencias o formato, ej: "Leer Kotlin (Estudio)" -> "Leer Kotlin"
                 val nombreTareaInput = rawInput.substringBefore("(").trim()
 
-                // Buscar primero en la tarea seleccionada por búsqueda, luego en la BD por nombre exacto
                 val tareaExistente = if (tareaSeleccionadaBusqueda != null && 
                                         tareaSeleccionadaBusqueda!!.nombre.equals(nombreTareaInput, ignoreCase = true)) {
                     tareaSeleccionadaBusqueda
@@ -296,10 +494,8 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 if (tareaExistente != null) {
-                    // La tarea existe en el sistema -> Iniciar evento directamente sin pedir categoría
                     iniciarEventoProcesado(tareaExistente)
                 } else {
-                    // HU-04: La tarea NO existe -> Pedir categoría para crearla
                     mostrarDialogoSeleccionarCategoriaParaNuevaTarea(nombreTareaInput)
                 }
             } catch (e: Exception) {
@@ -331,7 +527,7 @@ class MainActivity : AppCompatActivity() {
         val spinner = dialogView.findViewById<Spinner>(R.id.spinnerCategoria)
 
         etNombre.setText(nombreTarea)
-        etNombre.isEnabled = false // Fijar el nombre escrito
+        etNombre.isEnabled = false
 
         val spinnerAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, categorias)
         spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
@@ -356,14 +552,13 @@ class MainActivity : AppCompatActivity() {
             val resultId = dbHelper.insertarTarea(nombreTarea, categoriaSeleccionada.id)
             if (resultId != -1L) {
                 val nuevaTarea = Tarea(resultId.toInt(), nombreTarea, categoriaSeleccionada.id, categoriaSeleccionada.nombre)
-                cargarTareas() // Actualizar lista de Tareas Sprint 1
+                cargarTareas()
                 cargarCategorias()
-                cargarEstadisticasSemanales() // Actualizar panel dinámico Sprint 3
+                cargarEstadisticasSemanales()
 
                 Toast.makeText(this, "Tarea creada: ${nuevaTarea.nombre}", Toast.LENGTH_SHORT).show()
                 dialog.dismiss()
 
-                // Iniciar evento con la nueva tarea
                 iniciarEventoProcesado(nuevaTarea)
             } else {
                 tilNombre.error = getString(R.string.error_task_exists)
@@ -417,7 +612,7 @@ class MainActivity : AppCompatActivity() {
 
                 cargarEventos()
                 actualizarEstadoEventoEnCurso()
-                cargarEstadisticasSemanales() // Actualizar panel de porcentajes automáticamente
+                cargarEstadisticasSemanales()
             } else {
                 Toast.makeText(this, "Error al finalizar el evento", Toast.LENGTH_SHORT).show()
             }
@@ -451,7 +646,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // --- ESTADÍSTICAS SEMANALES DINOÁMICAS (HU-06 SPRINT 3) ---
+    // --- ESTADÍSTICAS SEMANALES DINÁMICAS (HU-06 SPRINT 3) ---
 
     private fun cargarEstadisticasSemanales() {
         try {
@@ -490,8 +685,8 @@ class MainActivity : AppCompatActivity() {
                 llContenedorEstadisticasSemana.addView(rowView)
             }
 
-            // Fila adicional "Sin registrar"
-            val totalSegundosSemana = 168L * 3600L // 604,800 segundos
+            // Fila "Sin registrar"
+            val totalSegundosSemana = 168L * 3600L
             val segundosSinRegistrar = (totalSegundosSemana - sumaSegundosRegistrados).coerceAtLeast(0L)
             val horasSinRegistrar = segundosSinRegistrar / 3600.0
             val porcentajeSinRegistrar = (horasSinRegistrar / 168.0) * 100.0
@@ -534,6 +729,7 @@ class MainActivity : AppCompatActivity() {
         cargarCategorias()
         actualizarEstadoEventoEnCurso()
         cargarEstadisticasSemanales()
+        cargarModuloReportes()
     }
 
     private fun cargarEventos() {
@@ -593,9 +789,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupFab() {
         fabAdd.setOnClickListener {
-            if (currentTab == 1) {
+            if (currentTab == 2) {
                 mostrarDialogoCrearTarea()
-            } else if (currentTab == 2) {
+            } else if (currentTab == 3) {
                 mostrarDialogoCrearCategoria()
             }
         }
@@ -640,7 +836,7 @@ class MainActivity : AppCompatActivity() {
             val result = dbHelper.insertarCategoria(nombre)
             if (result != -1L) {
                 cargarCategorias()
-                cargarEstadisticasSemanales() // Actualizar panel si creó una nueva categoría
+                cargarEstadisticasSemanales()
                 Toast.makeText(this, "Categoría creada con éxito", Toast.LENGTH_SHORT).show()
                 dialog.dismiss()
             } else {
